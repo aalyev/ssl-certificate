@@ -1,0 +1,47 @@
+#!/bin/bash
+# script for monitoring validity "SSL Certificate"
+# for this script need a program "OpenSSL"
+
+
+if [ -z "$1" ] # condition for checking an empty line
+  then
+	echo "Empty line! Type the site domain"
+  else
+
+  SERVER=$1 	# domain input variable
+  RETVAL=0 	# 
+  WARNING="60"	# variable for WARNING
+  CRITICAL="30"	# variable for CRITICAL 
+
+  if [ -z "$2" ] # condition check the port
+	  then
+	      PORT=443;
+	  else
+	      PORT=$2;
+  fi
+  
+  EXPIRE_DATE=`echo | openssl s_client -servername $SERVER -connect $SERVER:$PORT 2>/dev/null | openssl x509 -noout -dates 2>/dev/null | grep notAfter | cut -d'=' -f2` 
+  EXPIRE_SECS=`date -d "${EXPIRE_DATE}" +%s`
+  EXPIRE_TIME=$(( ${EXPIRE_SECS} - `date +%s` ))
+  
+  if test $EXPIRE_TIME -lt 0 # condition check how many days left
+	  then
+	      RETVAL=0
+	   else
+	      RETVAL=$(( ${EXPIRE_TIME} / 24 / 3600 ))
+  fi
+  
+
+  if (( "${RETVAL}" > "$WARNING" )); # checking the condition for withdrawal of the report and how many days are left until the end of the SSL certificate
+	   then 
+	      echo "OK expires in" ${RETVAL} "days"
+	exit 0
+	   elif (( "${RETVAL}" > "$CRITICAL" )); then 
+	      echo "WARNING expires in" ${RETVAL} "days"
+	exit 1
+	   else 
+	      echo "CRITICAL expires in" ${RETVAL} "days"
+	exit 2
+  fi
+
+fi
